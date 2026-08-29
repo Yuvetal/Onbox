@@ -5,11 +5,13 @@ import { env } from '../config/env';
  * Shared Redis connection instance for BullMQ and atomic rate limiting.
  * `maxRetriesPerRequest: null` is required by BullMQ.
  */
-export const redisConnection = new Redis({
-  host: env.redisHost,
-  port: env.redisPort,
-  maxRetriesPerRequest: null,
-});
+export const redisConnection = process.env.REDIS_URL
+  ? new Redis(process.env.REDIS_URL, { maxRetriesPerRequest: null })
+  : new Redis({
+      host: env.redisHost,
+      port: env.redisPort,
+      maxRetriesPerRequest: null,
+    });
 
 redisConnection.on('connect', () => {
   console.log('🔴 Connected to Redis');

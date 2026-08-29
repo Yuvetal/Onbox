@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { User } from '../types';
-import { authApi } from '../services/api';
+import { authApi, API_BASE_URL } from '../services/api';
 
 interface LoginPageProps {
   onDevLogin: () => void;
@@ -15,7 +15,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onDevLogin, onLoginSuccess
 
   const handleGoogleLogin = () => {
     // Redirects browser to real Google OAuth backend handler
-    window.location.href = 'http://localhost:5000/api/auth/google';
+    window.location.href = `${API_BASE_URL}/auth/google`;
   };
 
   const handleEmailLogin = async (e: React.FormEvent) => {

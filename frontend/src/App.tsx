@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { User, Email, Pagination } from './types';
-import { authApi, slackApi, emailsApi, searchApi } from './services/api';
+import { authApi, slackApi, emailsApi, searchApi, API_BASE_URL } from './services/api';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { EmailListRow } from './components/EmailListRow';
@@ -155,7 +155,7 @@ export function App() {
   // Dev Login Shortcut
   const handleDevLogin = async () => {
     window.location.hash = '';
-    window.location.href = 'http://localhost:5000/api/auth/dev-login';
+    window.location.href = `${API_BASE_URL}/auth/dev-login`;
   };
 
   if (authLoading) {
