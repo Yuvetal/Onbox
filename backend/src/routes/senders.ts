@@ -1,34 +1,29 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import { prisma } from '../db/prisma';
+import { authenticateUser, AuthenticatedRequest } from '../middleware/auth';
 
 const router = Router();
 
 /**
  * GET /api/senders
- * Returns list of senders for an authenticated user (or default user).
+ * Returns list of senders for the authenticated user.
  */
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId = (req as any).user?.id;
-    
-    // Find default demo user if not authenticated yet
-    let user = userId
-      ? await prisma.user.findUnique({ where: { id: userId } })
-      : await prisma.user.findFirst();
-
+    const user = req.user;
     if (!user) {
-      user = await prisma.user.create({
-        data: {
-          googleId: 'demo-google-id',
-          email: 'demo@onb.com',
-          name: 'Demo User',
-        },
-      });
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
 
+    // Ensure the user has at least their own email as a default sender
+    const existingSender = await prisma.sender.findFirst({
+      where: { userId: user.id },
+    });
+    if (!existingSender) {
       await prisma.sender.create({
         data: {
           userId: user.id,
-          email: 'sender@onb.com',
+          email: user.email,
         },
       });
     }
@@ -46,24 +41,18 @@ router.get('/', async (req: Request, res: Response) => {
 
 /**
  * POST /api/senders
- * Creates a new sender email for a user.
+ * Creates a new sender email for the authenticated user.
  */
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
   try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
     const { email } = req.body;
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
-    }
-
-    let user = await prisma.user.findFirst();
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          googleId: 'demo-google-id',
-          email: 'demo@onb.com',
-          name: 'Demo User',
-        },
-      });
     }
 
     const sender = await prisma.sender.upsert({

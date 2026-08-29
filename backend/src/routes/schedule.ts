@@ -1,7 +1,8 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import { prisma } from '../db/prisma';
 import { emailQueue } from '../queue/emailQueue';
 import { indexEmailDocument } from '../services/elasticsearch';
+import { authenticateUser, AuthenticatedRequest } from '../middleware/auth';
 
 const router = Router();
 
@@ -9,7 +10,7 @@ const router = Router();
  * POST /api/schedule
  * Schedules batch email sends with deterministic BullMQ job IDs for strict idempotency.
  */
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const {
       subject,
@@ -41,16 +42,10 @@ router.post('/', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'At least one valid recipient email is required' });
     }
 
-    // Resolve or find User and Sender
-    let user = await prisma.user.findFirst();
+    // Resolve authenticated User
+    let user = req.user;
     if (!user) {
-      user = await prisma.user.create({
-        data: {
-          googleId: 'demo-google-id',
-          email: 'demo@onb.com',
-          name: 'Demo User',
-        },
-      });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     let targetSenderId = senderId;
