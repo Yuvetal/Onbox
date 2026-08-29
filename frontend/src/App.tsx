@@ -137,6 +137,7 @@ export function App() {
     try {
       await authApi.logout();
       setUser(null);
+      setForceLogin(true);
       setToast({ type: 'success', message: 'Logged out successfully' });
     } catch (err: any) {
       setToast({ type: 'error', message: err.message });

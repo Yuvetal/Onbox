@@ -211,4 +211,16 @@ router.post('/email-login', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * POST /api/auth/logout
+ * Clears httpOnly JWT session cookie.
+ */
+router.post('/logout', (req: Request, res: Response) => {
+  res.clearCookie('token', {
+    httpOnly: true,
+    sameSite: 'lax',
+  });
+  res.json({ message: 'Logged out successfully' });
+});
+
 export default router;
