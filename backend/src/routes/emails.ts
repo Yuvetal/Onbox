@@ -1,24 +1,36 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import { prisma } from '../db/prisma';
+import { authenticateUser, AuthenticatedRequest } from '../middleware/auth';
 
 const router = Router();
 
 /**
  * GET /api/emails/scheduled?page=1&pageSize=20
- * Returns paginated list of SCHEDULED email records.
+ * Returns paginated list of SCHEDULED email records for the authenticated user.
  */
-router.get('/scheduled', async (req: Request, res: Response) => {
+router.get('/scheduled', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
   try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
     const page = Math.max(1, parseInt(req.query.page as string || '1', 10));
     const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize as string || '20', 10)));
     const skip = (page - 1) * pageSize;
 
     const [total, emails] = await Promise.all([
       prisma.email.count({
-        where: { status: 'SCHEDULED' },
+        where: {
+          userId: user.id,
+          status: 'SCHEDULED',
+        },
       }),
       prisma.email.findMany({
-        where: { status: 'SCHEDULED' },
+        where: {
+          userId: user.id,
+          status: 'SCHEDULED',
+        },
         include: { sender: true },
         orderBy: { scheduledAt: 'asc' },
         skip,
@@ -42,20 +54,31 @@ router.get('/scheduled', async (req: Request, res: Response) => {
 
 /**
  * GET /api/emails/sent?page=1&pageSize=20
- * Returns paginated list of SENT and FAILED email records.
+ * Returns paginated list of SENT and FAILED email records for the authenticated user.
  */
-router.get('/sent', async (req: Request, res: Response) => {
+router.get('/sent', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
   try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
     const page = Math.max(1, parseInt(req.query.page as string || '1', 10));
     const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize as string || '20', 10)));
     const skip = (page - 1) * pageSize;
 
     const [total, emails] = await Promise.all([
       prisma.email.count({
-        where: { status: { in: ['SENT', 'FAILED'] } },
+        where: {
+          userId: user.id,
+          status: { in: ['SENT', 'FAILED'] },
+        },
       }),
       prisma.email.findMany({
-        where: { status: { in: ['SENT', 'FAILED'] } },
+        where: {
+          userId: user.id,
+          status: { in: ['SENT', 'FAILED'] },
+        },
         include: { sender: true },
         orderBy: { updatedAt: 'desc' },
         skip,
@@ -79,13 +102,21 @@ router.get('/sent', async (req: Request, res: Response) => {
 
 /**
  * GET /api/emails/:id
- * Fetches a single Email record by primary key ID.
+ * Fetches a single Email record by primary key ID (enforcing user ownership).
  */
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
   try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
     const { id } = req.params;
-    const email = await prisma.email.findUnique({
-      where: { id },
+    const email = await prisma.email.findFirst({
+      where: {
+        id,
+        userId: user.id,
+      },
       include: {
         sender: true,
         user: true,
