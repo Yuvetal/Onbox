@@ -169,7 +169,16 @@ export function App() {
   }
 
   if (!user || forceLogin) {
-    return <LoginPage onDevLogin={handleDevLogin} />;
+    return (
+      <LoginPage
+        onDevLogin={handleDevLogin}
+        onLoginSuccess={(loggedInUser) => {
+          setUser(loggedInUser);
+          setForceLogin(false);
+          window.location.hash = '';
+        }}
+      />
+    );
   }
 
   // Active email list to display

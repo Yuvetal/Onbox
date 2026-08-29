@@ -1,16 +1,45 @@
 import React, { useState } from 'react';
+import type { User } from '../types';
+import { authApi } from '../services/api';
 
 interface LoginPageProps {
   onDevLogin: () => void;
+  onLoginSuccess?: (user: User) => void;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ onDevLogin }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ onDevLogin, onLoginSuccess }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleGoogleLogin = () => {
     // Redirects browser to real Google OAuth backend handler
     window.location.href = 'http://localhost:5000/api/auth/google';
+  };
+
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) {
+      setError('Please enter your email ID');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const res = await authApi.loginWithEmail(email.trim());
+      if (onLoginSuccess) {
+        onLoginSuccess(res.user);
+      } else {
+        window.location.reload();
+      }
+    } catch (err: any) {
+      setError(err.message || 'Login failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -28,11 +57,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onDevLogin }) => {
 
         {/* Light Green Pill Button: Login with Google (Figma Spec) */}
         <button
+          type="button"
           onClick={handleGoogleLogin}
           className="w-full flex items-center justify-center gap-3 py-3 px-6 rounded-full bg-[#e6f4ea] hover:bg-[#dcfce7] text-[#0f9f59] border border-[#bbf7d0] font-semibold text-sm transition-all shadow-sm active:scale-[0.98]"
         >
           {/* Google G Icon */}
-          <svg className="w-4 h-4" viewBox="0 0 24 24">
+          <svg className="w-4 h-4" viewBox="0 24 24">
             <path
               fill="#4285F4"
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -61,12 +91,20 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onDevLogin }) => {
           </span>
         </div>
 
+        {/* Error Alert if any */}
+        {error && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-semibold text-red-600">
+            {error}
+          </div>
+        )}
+
         {/* Form Inputs (Light Gray #f3f4f6 rounded) */}
-        <div className="space-y-4">
+        <form onSubmit={handleEmailLogin} className="space-y-4">
           <div className="space-y-1">
             <label className="text-xs font-semibold text-gray-600 block">Email ID</label>
             <input
               type="email"
+              required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@example.com"
@@ -87,13 +125,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onDevLogin }) => {
 
           {/* Solid Green Login Button */}
           <button
-            type="button"
-            onClick={onDevLogin}
-            className="w-full py-3 rounded-full bg-[#0f9f59] hover:bg-emerald-700 text-white font-semibold text-sm transition-all shadow-md shadow-emerald-950/10 active:scale-[0.98]"
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 rounded-full bg-[#0f9f59] hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold text-sm transition-all shadow-md shadow-emerald-950/10 active:scale-[0.98]"
           >
-            Login
+            {loading ? 'Logging in...' : 'Login'}
           </button>
-        </div>
+        </form>
 
         {/* Local Dev Login Quick Link */}
         <div className="pt-2 text-center">

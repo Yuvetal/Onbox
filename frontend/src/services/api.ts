@@ -29,6 +29,11 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
 export const authApi = {
   me: () => request<{ user: User }>('/auth/me'),
+  loginWithEmail: (email: string) =>
+    request<{ message: string; user: User }>('/auth/email-login', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
   logout: () => request<{ message: string }>('/auth/logout', { method: 'POST' }),
 };
 

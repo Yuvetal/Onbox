@@ -158,15 +158,57 @@ router.get('/me', authenticateUser, (req: AuthenticatedRequest, res: Response) =
 });
 
 /**
- * POST /api/auth/logout
- * Clears httpOnly JWT session cookie.
+ * POST /api/auth/email-login
+ * Signs in or creates a user using the email typed in the login card.
  */
-router.post('/logout', (req: Request, res: Response) => {
-  res.clearCookie('token', {
-    httpOnly: true,
-    sameSite: 'lax',
-  });
-  res.json({ message: 'Logged out successfully' });
+router.post('/email-login', async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ error: 'Valid email is required' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const displayName = cleanEmail.split('@')[0];
+
+    // Upsert User in MySQL
+    let user = await prisma.user.findFirst({ where: { email: cleanEmail } });
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          googleId: `email-user-${Date.now()}`,
+          email: cleanEmail,
+          name: displayName,
+          avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${displayName}`,
+        },
+      });
+    }
+
+    // Ensure user has their own email as default sender
+    const existingSender = await prisma.sender.findFirst({
+      where: { userId: user.id },
+    });
+    if (!existingSender) {
+      await prisma.sender.create({
+        data: {
+          userId: user.id,
+          email: user.email,
+        },
+      });
+    }
+
+    // Set 7-day httpOnly JWT cookie
+    const jwtToken = generateAuthToken({ userId: user.id, email: user.email });
+    res.cookie('token', jwtToken, {
+      httpOnly: true,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.json({ message: 'Login successful', user });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 export default router;
